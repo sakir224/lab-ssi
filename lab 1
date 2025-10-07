@@ -1,0 +1,51 @@
+import random
+import statistics
+try:
+    N = int(input("Введите кол-во измерений (N): "))
+    a = int(input("Введите начало интервала (a): "))
+    b = int(input("Введите конец интервала (b): "))  
+    if b <= a:
+        print("Ошибка: конец интервала должен быть больше начала!")
+        exit
+    if N <= 0:
+        print("Ошибка: количество измерений должно быть положительным!")
+        exit     
+except ValueError:
+    print("Ошибка: введите корректные числовые значения!")
+    exit
+    
+random_number = [random.randint(a, b) for _ in range(N)] # генерация случайных чисел
+
+filename = f"numbers.txt" # создание файла
+with open(filename, 'w') as file: # открытие файла
+    for number in random_number:
+        file.write(f"{number:.6f}\n") # запись чисел в файл
+random_number = []  
+
+with open(filename, 'r') as file: # открытие файла
+    for raw_number in file.readlines():
+        random_number.append(float(raw_number)) #считывание чисел
+
+max_value = max(random_number) # поиск максимального значения
+min_value = min(random_number) # поиск минимального значения
+
+mean_value = statistics.mean(random_number) # нахождение среднего значения
+
+median_value = statistics.median(random_number) # нахождение медианы
+
+mode_values = statistics.multimode(random_number) # нахождение моды
+if len(mode_values) == len(random_number):
+    mode_result = "Все значения уникальны (моды нет)"
+else:
+    mode_result = ", ".join([f"{x:.6f}" for x in mode_values])
+
+count_of_even = len([i for i in random_number if i % 2 != 0]) # нахождение длинны ряда
+
+probability = 1 / count_of_even # нахождение вероятности выбора случайного числа из ряда
+
+print(f"Максимальное значение: {max_value:.6f}")
+print(f"Минимальное значение: {min_value:.6f}")
+print(f"Среднее значение: {mean_value:.6f}")
+print(f"Мода(ы): {mode_result}")
+print(f"Медиана: {median_value:.6f}")
+print(f"Вероятность выбора случайного числа: {probability:.6f}")
