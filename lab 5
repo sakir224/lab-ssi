@@ -1,0 +1,278 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from collections import Counter
+
+class kNNClassifier:
+
+    def __init__(self, k=5):
+        self.k = k
+        self.X_train = None
+        self.y_train = None
+        # Продукты для классификации
+        self.products = {
+            'Яблоко': {'category': 'Фрукты', 'stats': [8.0, 6.0], 'color': 'red'},
+            'Банан': {'category': 'Фрукты', 'stats': [2.0, 9.0], 'color': 'yellow'},
+            'Виноград': {'category': 'Фрукты', 'stats': [3.5, 8.5], 'color': 'purple'},
+            'Апельсин': {'category': 'Фрукты', 'stats': [3.0, 8.0], 'color': 'orange'},
+            'Салат': {'category': 'Овощи', 'stats': [7.0, 2.5], 'color': 'green'},
+            'Морковь': {'category': 'Овощи', 'stats': [8.5, 3.0], 'color': 'darkorange'},
+            'Бекон': {'category': 'Протеины', 'stats': [6.5, 3.5], 'color': 'brown'},
+            'Орехи': {'category': 'Протеины', 'stats': [8.0, 4.0], 'color': 'peru'},
+            'Рыба': {'category': 'Протеины', 'stats': [2.0, 2.0], 'color': 'skyblue'},
+            'Сыр': {'category': 'Протеины', 'stats': [1.0, 2.5], 'color': 'gold'}
+        }
+        # Категории
+        self.categories = ['Фрукты', 'Овощи', 'Протеины']
+    def create_training_data(self, samples_per_product=50):
+        """Создание обучающих данных"""
+        np.random.seed(42)
+        X = []
+        y = []
+        for product_name, product_info in self.products.items():
+            base_crunch, base_sweet = product_info['stats']
+            for _ in range(samples_per_product):
+                crunch = np.random.normal(base_crunch, 0.6)
+                sweet = np.random.normal(base_sweet, 0.6)
+                crunch = np.clip(crunch, 0, 10)
+                sweet = np.clip(sweet, 0, 10)
+                X.append([crunch, sweet])
+                y.append(product_name)
+        self.X_train = np.array(X)
+        self.y_train = np.array(y)
+        return self.X_train, self.y_train
+    def euclidean_distance(self, a, b):
+        """Вычисление расстояния"""
+        return np.sqrt(np.sum((a - b) ** 2))
+    def predict(self, crunch, sweet):
+        """Предсказание продукта"""
+        test_point = np.array([crunch, sweet])
+        distances = []
+        for i in range(len(self.X_train)):
+            dist = self.euclidean_distance(test_point, self.X_train[i])
+            distances.append((dist, self.y_train[i]))
+        distances.sort(key=lambda x: x[0])
+        neighbors = [d[1] for d in distances[:self.k]]
+        most_common = Counter(neighbors).most_common(1)[0][0]
+        return most_common
+    def classify_all_products(self):
+        """Классификация всех продуктов"""
+        print("\n" + "="*60)
+        print("РЕЗУЛЬТАТЫ КЛАССИФИКАЦИИ")
+        print("="*60)
+        results = []
+        for product_name in self.products.keys():
+            crunch, sweet = self.products[product_name]['stats']
+            true_category = self.products[product_name]['category']
+            predicted = self.predict(crunch, sweet)
+            predicted_category = self.products[predicted]['category']
+            is_correct = predicted == product_name
+            category_correct = true_category == predicted_category
+            results.append({
+                'product': product_name,
+                'crunch': crunch,
+                'sweet': sweet,
+                'true_category': true_category,
+                'predicted': predicted,
+                'is_correct': is_correct,
+                'category_correct': category_correct
+            })
+            # Вывод результата
+            status = "good" if is_correct else "bad"
+            cat_status = "good" if category_correct else "bad"
+            print(f"\n{product_name}:")
+            print(f"  Хруст: {crunch:.1f}, Сладость: {sweet:.1f}")
+            print(f"  Истинная категория: {true_category}")
+            print(f"  Предсказано: {predicted} {status}")
+            print(f"  Категория верна: {cat_status}")
+        return results
+    def plot_data(self):
+        """Визуализация данных"""
+        plt.figure(figsize=(12, 10))
+        # Обучающие данные
+        for product_name, product_info in self.products.items():
+            # Находим точки этого продукта
+            mask = self.y_train == product_name
+            if np.any(mask):
+                plt.scatter(
+                    self.X_train[mask, 0],
+                    self.X_train[mask, 1],
+                    c=product_info['color'],
+                    label=product_name,
+                    alpha=0.5,
+                    s=40,
+                    edgecolors='white',
+                    linewidth=0.5
+                )
+        # Идеальные точки продуктов
+        for product_name, product_info in self.products.items():
+            crunch, sweet = product_info['stats']
+            plt.scatter(
+                crunch, sweet,
+                c=product_info['color'],
+                s=200,
+                marker='*',
+                edgecolors='black',
+                linewidth=2
+            )
+            plt.text(crunch + 0.1, sweet + 0.1, product_name, 
+                    fontsize=9, fontweight='bold')
+        plt.title(f'Обучающие данные (k={self.k})', fontsize=16)
+        plt.xlabel('Хруст', fontsize=14)
+        plt.ylabel('Сладость', fontsize=14)
+        plt.xlim(0, 10)
+        plt.ylim(0, 10)
+        plt.grid(True, alpha=0.3)
+        plt.legend(loc='upper right', fontsize=9)
+        plt.tight_layout()
+        plt.show()
+    def plot_results(self, results):
+        """Визуализация результатов"""
+        fig, axes = plt.subplots(1, 2, figsize=(14, 7))
+        # 1. Результаты по продуктам
+        ax1 = axes[0]
+        products = [r['product'] for r in results]
+        correct = [r['is_correct'] for r in results]
+        colors = ['green' if c else 'red' for c in correct]
+        bars = ax1.barh(products, [1]*len(products), color=colors, alpha=0.7)
+        # Добавляем метки
+        for bar, result in zip(bars, results):
+            predicted = result['predicted']
+            status = "ПРАВИЛЬНО" if result['is_correct'] else f"ОШИБКА → {predicted}"
+            color = 'green' if result['is_correct'] else 'red'
+            ax1.text(0.5, bar.get_y() + bar.get_height()/2,
+                    status, ha='left', va='center',
+                    color=color, fontsize=10, fontweight='bold')
+        ax1.set_xlim(0, 1.5)
+        ax1.set_xticks([])
+        ax1.set_title('Результаты классификации', fontsize=14)
+        # 2. Статистика
+        ax2 = axes[1]
+        total = len(results)
+        correct_count = sum(1 for r in results if r['is_correct'])
+        accuracy = correct_count / total
+        category_correct = sum(1 for r in results if r['category_correct'])
+        category_accuracy = category_correct / total
+        labels = ['Точность продукта', 'Точность категории']
+        values = [accuracy, category_accuracy]
+        colors_bar = ['blue', 'orange']
+        bars2 = ax2.bar(labels, values, color=colors_bar, alpha=0.7)
+        ax2.set_ylim(0, 1.1)
+        ax2.set_ylabel('Точность', fontsize=12)
+        ax2.set_title('Общая статистика', fontsize=14)
+        ax2.grid(True, alpha=0.3, axis='y')
+        # Добавляем проценты
+        for bar, value in zip(bars2, values):
+            ax2.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 0.02,
+                    f'{value:.1%}', ha='center', va='bottom', fontsize=11)
+        plt.suptitle(f'Результаты k-NN классификации (k={self.k})', fontsize=16)
+        plt.tight_layout()
+        plt.show()
+    def analyze_k_parameter(self):
+        """Анализ влияния параметра k"""
+        k_values = [1, 3, 5, 7, 9, 11, 13, 15]
+        accuracies = []
+        print("\n" + "="*60)
+        print("АНАЛИЗ ВЛИЯНИЯ ПАРАМЕТРА k")
+        print("="*60)
+        original_k = self.k
+        for k in k_values:
+            self.k = k
+            correct_count = 0
+            for product_name, product_info in self.products.items():
+                crunch, sweet = product_info['stats']
+                predicted = self.predict(crunch, sweet)
+                if predicted == product_name:
+                    correct_count += 1
+            accuracy = correct_count / len(self.products)
+            accuracies.append(accuracy)
+            print(f"k = {k:2d}: Точность = {accuracy:.2%} ({correct_count}/{len(self.products)})")
+        # Восстанавливаем оригинальный k
+        self.k = original_k
+        # Визуализация
+        plt.figure(figsize=(10, 6))
+        plt.plot(k_values, accuracies, 'bo-', linewidth=2, markersize=8)
+        plt.xlabel('k (количество соседей)', fontsize=14)
+        plt.ylabel('Точность', fontsize=14)
+        plt.title('Влияние параметра k на точность', fontsize=16)
+        plt.grid(True, alpha=0.3)
+        plt.xticks(k_values)
+        plt.tight_layout()
+        plt.show()
+        return k_values, accuracies
+def main():
+    """Основная функция программы"""
+    print("="*70)
+    print("КЛАССИФИКАТОР ПРОДУКТОВ K-NN")
+    print("="*70)
+    # Запрос параметра k у пользователя
+    while True:
+        try:
+            k_input = input("\nВведите количество соседей k (1-15, по умолчанию 5): ").strip()
+            if k_input == "":
+                k = 5
+                break
+            else:
+                k = int(k_input)
+                if 1 <= k <= 15:
+                    break
+                else:
+                    print("Ошибка: k должно быть от 1 до 15")
+        except ValueError:
+            print("Ошибка: введите целое число")
+    print(f"\nВыбрано k = {k}")
+    # Создание классификатора
+    classifier = kNNClassifier(k=k)
+    # Создание обучающих данных
+    print("\n[1] СОЗДАНИЕ ОБУЧАЮЩИХ ДАННЫХ")
+    print("-"*40)
+    X_train, y_train = classifier.create_training_data(samples_per_product=50)
+    print(f" Создано {len(X_train)} обучающих примеров")
+    print(f" Продуктов для классификации: {len(classifier.products)}")
+    # Вывод списка продуктов
+    print("\nПРОДУКТЫ ДЛЯ КЛАССИФИКАЦИИ:")
+    for category in classifier.categories:
+        products_in_category = [p for p, info in classifier.products.items() 
+                              if info['category'] == category]
+        print(f"  {category}: {', '.join(products_in_category)}")
+    # Визуализация данных
+    print("\n[2] ВИЗУАЛИЗАЦИЯ ДАННЫХ")
+    print("-"*40)
+    classifier.plot_data()
+    # Классификация
+    print("\n[3] КЛАССИФИКАЦИЯ ПРОДУКТОВ")
+    print("-"*40)
+    results = classifier.classify_all_products()
+    # Анализ результатов
+    print("\n[4] АНАЛИЗ РЕЗУЛЬТАТОВ")
+    print("-"*40)
+    total = len(results)
+    correct_products = sum(1 for r in results if r['is_correct'])
+    correct_categories = sum(1 for r in results if r['category_correct'])
+    accuracy_products = correct_products / total
+    accuracy_categories = correct_categories / total
+    print(f" Всего продуктов: {total}")
+    print(f" Правильно определено продуктов: {correct_products} ({accuracy_products:.1%})")
+    print(f" Правильно определено категорий: {correct_categories} ({accuracy_categories:.1%})")
+    # Визуализация результатов
+    classifier.plot_results(results)
+    # Анализ влияния k
+    print("\n[5] АНАЛИЗ ВЛИЯНИЯ ПАРАМЕТРА k")
+    print("-"*40)
+    k_values, accuracies = classifier.analyze_k_parameter()
+    # Находим лучшее k
+    best_idx = np.argmax(accuracies)
+    best_k = k_values[best_idx]
+    best_accuracy = accuracies[best_idx]
+    print(f"\n Лучшее значение k: {best_k} (точность: {best_accuracy:.1%})")
+    # Сводка
+    print("\n" + "="*70)
+    print("СВОДКА")
+    print("="*70)
+    print(f"Использованное k: {k}")
+    print(f"Точность классификации продуктов: {accuracy_products:.1%}")
+    print(f"Точность классификации категорий: {accuracy_categories:.1%}")
+    print(f"Рекомендуемое k: {best_k}")
+    print("="*70)
+
+if __name__ == "__main__":
+    main()
