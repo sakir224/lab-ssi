@@ -1,0 +1,176 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+from mpl_toolkits.mplot3d import Axes3D
+
+def print_matrix(matrix, name):
+    print(f"{name}:")
+    print(matrix)
+    print()
+def plot_visualizations(A, F, result):
+    """Функция для отображения графиков"""
+    fig = plt.figure(figsize=(16, 12))
+    # Тепловая карта для матрицы A
+    ax1 = plt.subplot(2, 3, 1)
+    im1 = ax1.imshow(A, cmap='coolwarm', interpolation='nearest')
+    ax1.set_title('Тепловая карта матрицы A', fontsize=12, fontweight='bold')
+    ax1.set_xlabel('Столбцы')
+    ax1.set_ylabel('Строки')
+    plt.colorbar(im1, ax=ax1, fraction=0.046, pad=0.04)
+    # Добавление значений на тепловую карту
+    for i in range(A.shape[0]):
+        for j in range(A.shape[1]):
+            ax1.text(j, i, f'{A[i, j]:.1f}', ha='center', va='center', 
+                    color='black', fontsize=8 if A.shape[0] < 10 else 6)
+    # 3D поверхность для матрицы F
+    ax2 = plt.subplot(2, 3, 2, projection='3d')
+    x = np.arange(F.shape[1])
+    y = np.arange(F.shape[0])
+    X, Y = np.meshgrid(x, y)
+    surf = ax2.plot_surface(X, Y, F, cmap='viridis', alpha=0.8,
+                           linewidth=0.5, antialiased=True)
+    ax2.set_title('3D поверхность матрицы F', fontsize=12, fontweight='bold')
+    ax2.set_xlabel('Столбцы')
+    ax2.set_ylabel('Строки')
+    ax2.set_zlabel('Значения')
+    fig.colorbar(surf, ax=ax2, shrink=0.5, aspect=5)
+    # Сравнение диагоналей матриц A и F
+    ax4 = plt.subplot(2, 3, 4)
+    diag_A = np.diag(A)
+    diag_F = np.diag(F)
+    x = np.arange(len(diag_A))
+    width = 0.35
+    bars1 = ax4.bar(x - width/2, diag_A, width, label='Диагональ A', 
+                   color='lightcoral', alpha=0.8)
+    bars2 = ax4.bar(x + width/2, diag_F, width, label='Диагональ F', 
+                   color='lightseagreen', alpha=0.8)
+    ax4.set_title('Сравнение диагоналей матриц A и F', 
+                 fontsize=12, fontweight='bold')
+    ax4.set_xlabel('Индекс')
+    ax4.set_ylabel('Значение')
+    ax4.legend()
+    ax4.grid(True, alpha=0.3)
+    # Гистограмма распределения значений матрицы A
+    ax6 = plt.subplot(2, 3, 5)
+    ax6.hist(A.flatten(), bins=20, edgecolor='black', alpha=0.7, 
+            color='steelblue')
+    ax6.set_title('Распределение значений матрицы A', 
+                 fontsize=12, fontweight='bold')
+    ax6.set_xlabel('Значения')
+    ax6.set_ylabel('Частота')
+    ax6.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+def main():
+    # Исходные данные
+    K = int(input("Введите коэффициент K: "))
+    N = int(input("Введите размер матриц N (N > 3): "))
+    # Формирование матриц
+    np.random.seed(42)  # Для воспроизводимости результатов
+    A = np.random.randint(-10, 11, size=(N, N)).astype(float)
+    print_matrix(A, "Матрица A")
+    # Разбиение матрицы A на подматрицы
+    n = N // 2
+    A11 = A[:n, :n]
+    A12 = A[:n, n:]
+    A21 = A[n:, :n]
+    A22 = A[n:, n:]
+    # Формирование матриц B, C, E
+    B = np.tril(A22)  # нижняя треугольная часть A22
+    C = np.triu(A11)  # верхняя треугольная часть A11
+    E = np.diag(np.diag(A12))  # диагональная матрица из диагонали A12
+    print_matrix(B, "Матрица B (нижняя треугольная часть A22)")
+    print_matrix(C, "Матрица C (верхняя треугольная часть A11)")
+    print_matrix(E, "Матрица E (диагональная из A12)")
+    # Формирование матрицы F (начальная копия A)
+    F = A.copy()
+    print_matrix(F, "Матрица F (начальная копия A)")
+    # Проверка условий для перестановки блоков
+    positive_even_cols = np.sum((C[:, 1::2] > 0))
+    negative_odd_cols = np.sum((C[:, 0::2] < 0))
+    print(f"Количество положительных элементов в четных столбцах C: {positive_even_cols}")
+    print(f"Количество отрицательных элементов в нечетных столбцах C: {negative_odd_cols}")
+    if positive_even_cols > negative_odd_cols:
+        print("Условие 1 выполняется: положительных в четных > отрицательных в нечетных")
+        print("Меняем B и C симметрично")
+        B_copy = B.copy()
+        C_copy = C.copy()
+        F[:n, :n] = B_copy
+        F[n:, n:] = C_copy
+        print("B и C поменяны местами симметрично")
+    else:
+        print("Условие 1 не выполняется")
+        print("Меняем C и E несимметрично")
+        C_copy = C.copy()
+        E_copy = E.copy()
+        F[:n, :n] = E_copy
+        if n <= C_copy.shape[1]:
+            F[:n, n:] = C_copy[:, :n]
+        else:
+            F[:n, n:] = C_copy[:, :F[:n, n:].shape[1]]
+        print("C и E поменяны местами несимметрично")
+    print_matrix(F, "Матрица F после перестановки блоков")
+    # Проверка условия с определителем
+    det_A = np.linalg.det(A)
+    sum_diag_F = np.trace(F)
+    print(f"Определитель матрицы A: {det_A:.4f}")
+    print(f"Сумма диагональных элементов матрицы F: {sum_diag_F:.4f}")
+    # Вычисление выражений
+    if det_A > sum_diag_F:
+        print("Условие 2 выполняется: det(A) > sum(diag(F))")
+        print("Вычисляем выражение: A * A^T - K * F^(-1)")
+        A_AT = np.dot(A, A.T)
+        print_matrix(A_AT, "A * A^T")
+        try:
+            F_inv = np.linalg.inv(F)
+            print_matrix(F_inv, "F^(-1)")
+        except np.linalg.LinAlgError:
+            print("Матрица F вырожденная, используем псевдообратную")
+            F_inv = np.linalg.pinv(F)
+            print_matrix(F_inv, "Псевдообратная F")
+        K_F_inv = K * F_inv
+        print_matrix(K_F_inv, f"K * F^(-1) (K={K})")
+        result = A_AT - K_F_inv
+        print_matrix(result, "Результат: A * A^T - K * F^(-1)")
+    else:
+        print("Условие 2 не выполняется")
+        print("Вычисляем выражение: (A^(-1) + G - F^(-1)) * K")
+        try:
+            A_inv = np.linalg.inv(A)
+            print_matrix(A_inv, "A^(-1)")
+        except np.linalg.LinAlgError:
+            print("Матрица A вырожденная, используем псевдообратную")
+            A_inv = np.linalg.pinv(A)
+            print_matrix(A_inv, "Псевдообратная A")
+        G = np.tril(A)
+        print_matrix(G, "Матрица G (нижняя треугольная из A)")
+        try:
+            F_inv = np.linalg.inv(F)
+            print_matrix(F_inv, "F^(-1)")
+        except np.linalg.LinAlgError:
+            print("Матрица F вырожденная, используем псевдообратную")
+            F_inv = np.linalg.pinv(F)
+            print_matrix(F_inv, "Псевдообратная F")
+        temp = A_inv + G - F_inv
+        print_matrix(temp, "A^(-1) + G - F^(-1)")
+        result = temp * K
+        print_matrix(result, f"Результат: (A^(-1) + G - F^(-1)) * K (K={K})")
+    # Визуализация
+    print("\n" + "="*60)
+    print("Запуск визуализации...")
+    print("="*60)
+    plot_visualizations(A, F, result)
+    # Вывод результатов расчёта
+    print("\n" + "="*60)
+    print("Результаты расчётов:")
+    print(f"Размер матриц: {N}x{N}")
+    print(f"Коэффициент K: {K}")
+    print(f"Определитель A: {det_A:.4f}")
+    print(f"Сумма диагонали F: {sum_diag_F:.4f}")
+    print(f"Min(A) = {np.min(A):.2f}, Max(A) = {np.max(A):.2f}")
+    print(f"Min(F) = {np.min(F):.2f}, Max(F) = {np.min(F):.2f}")
+    print(f"Min(результат) = {np.min(result):.2f}, Max(результат) = {np.max(result):.2f}")
+    print("="*60)
+
+if __name__ == "__main__":
+    main()
