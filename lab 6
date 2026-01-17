@@ -1,0 +1,99 @@
+def process_olympiad_results(file1_path, file2_path):
+    def read_olympiad_file(file_path):
+        "Чтение файла с результатами олимпиады"
+        results = {}
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                for line in file:
+                    line = line.strip()
+                    if line:
+                        parts = line.split()
+                        if len(parts) == 1:
+                            # Студент без призового места
+                            student = parts[0]
+                            results[student] = None
+                        elif len(parts) == 2:
+                            # Студент с призовым местом
+                            student = parts[0]
+                            try:
+                                place = int(parts[1])
+                                if 1 <= place <= 3:
+                                    results[student] = place
+                                else:
+                                    results[student] = None
+                            except ValueError:
+                                results[student] = None
+        except FileNotFoundError:
+            print(f"Ошибка: Файл '{file_path}' не найден!")
+            return {}
+        except Exception as e:
+            print(f"Ошибка при чтении файла '{file_path}': {e}")
+            return {}
+        return results
+    # Читаем результаты обеих олимпиад
+    olympiad1 = read_olympiad_file(file1_path)
+    olympiad2 = read_olympiad_file(file2_path)
+    if not olympiad1 or not olympiad2:
+        print("Не удалось прочитать оба файла!")
+        return {}
+    # Находим всех уникальных студентов
+    all_students = set(olympiad1.keys()) | set(olympiad2.keys())
+    # Словарь для хранения результатов
+    student_results = {}
+    # Обрабатываем каждого студента
+    for student in sorted(all_students):
+        # Получаем результаты студента в олимпиадах
+        result1 = olympiad1.get(student)
+        result2 = olympiad2.get(student)
+        # Определяем участие
+        participated1 = student in olympiad1
+        participated2 = student in olympiad2
+        # Определяем призовые места
+        prize1 = result1 is not None and 1 <= result1 <= 3
+        prize2 = result2 is not None and 1 <= result2 <= 3
+        # Определяем оценку по правилам
+        if participated1 and participated2:
+            # Участвовал в двух олимпиадах
+            if prize1 and prize2:
+                grade = "5"
+            elif prize1 or prize2:
+                grade = "4"
+            else:
+                grade = "3"
+        else:
+            # Участвовал только в одной олимпиаде
+            if prize1 or prize2:
+                grade = "4"
+            else:
+                grade = "д"
+        # Сохраняем результат
+        student_results[student] = grade
+    return student_results
+def main():
+    print("=" * 40)
+    print("ОБРАБОТКА РЕЗУЛЬТАТОВ ОЛИМПИАД")
+    print("=" * 40)
+    # Запрашиваем имена файлов у пользователя
+    file1 = input("Введите путь к файлу первой олимпиады(если txt файлы лежат в той же папке что и py файл, достаточно указать названия файлов с расширением): ").strip()
+    file2 = input("Введите путь к файлу второй олимпиады: ").strip()
+    # Проверяем, что оба файла указаны
+    if not file1 or not file2:
+        print("Ошибка: необходимо указать оба файла!")
+        return
+    # Обрабатываем результаты
+    print("\nОбработка данных...")
+    results = process_olympiad_results(file1, file2)
+    # Выводим результаты
+    if results:
+        print("\n" + "=" * 40)
+        print("ОБЩИЙ СПИСОК СТУДЕНТОВ И ОЦЕНКИ")
+        print("=" * 40)
+        print(f"{'Фамилия':<20} {'Оценка':<10}")
+        print("-" * 40)
+        for student, grade in sorted(results.items()):
+            print(f"{student:<20} {grade:<10}")
+        print("=" * 40)
+    else:
+        print("Нет данных для вывода!")
+if __name__ == "__main__":
+    main()
